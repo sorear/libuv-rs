@@ -2,13 +2,19 @@
 extern crate pkg_config;
 
 use std::fs;
-use std::path::{Path,PathBuf};
+use std::path::{Path, PathBuf};
 use std::env;
 use std::process::Command;
 
-fn libuv_dir() -> PathBuf { Path::new("libuv").to_owned() }
-fn libuv_repo() -> String { "https://github.com/libuv/libuv.git".to_owned() }
-fn libuv_revision() -> String { "v1.7.5".to_owned() }
+fn libuv_dir() -> PathBuf {
+    Path::new("libuv").to_owned()
+}
+fn libuv_repo() -> String {
+    "https://github.com/libuv/libuv.git".to_owned()
+}
+fn libuv_revision() -> String {
+    "v1.7.5".to_owned()
+}
 fn libuv_lib() -> PathBuf {
     if cfg!(windows) {
         libuv_dir().join("Release").join("lib").join("libuv.lib")
@@ -17,15 +23,29 @@ fn libuv_lib() -> PathBuf {
     }
 }
 
-fn libuv_force_fetch() -> bool { env::var("LIBUV_SYS_FORCE_FETCH").is_ok() }
-fn libuv_clean_compile() -> bool { env::var("LIBUV_SYS_CLEAN_COMPILE").is_ok() }
-fn use_system_libuv() -> bool { env::var("LIBUV_SYS_USE_SYSTEM").is_ok() }
+fn libuv_force_fetch() -> bool {
+    env::var("LIBUV_SYS_FORCE_FETCH").is_ok()
+}
+fn libuv_clean_compile() -> bool {
+    env::var("LIBUV_SYS_CLEAN_COMPILE").is_ok()
+}
+fn use_system_libuv() -> bool {
+    env::var("LIBUV_SYS_USE_SYSTEM").is_ok()
+}
 
 fn download_libuv() {
     println!("Downloading libuv...");
     fs::create_dir_all(libuv_dir()).unwrap();
-    Command::new("git").arg("clone").arg("-b").arg(libuv_revision()).arg(libuv_repo())
-        .arg(libuv_dir()).spawn().unwrap().wait().unwrap();
+    Command::new("git")
+        .arg("clone")
+        .arg("-b")
+        .arg(libuv_revision())
+        .arg(libuv_repo())
+        .arg(libuv_dir())
+        .spawn()
+        .unwrap()
+        .wait()
+        .unwrap();
     fs::create_dir_all("libuv.stamp").unwrap();
 }
 
@@ -40,16 +60,38 @@ fn build_libuv() {
         } else {
             panic!("Unsupported Windows host architecture")
         };
-        // deleted some environment stuff ("setup_windows_env") that looked fairly Python-specific
-        Command::new("cmd.exe").arg("/C").arg("vcbuild.bat").arg(libuv_arch).arg("release")
-            .current_dir(libuv_dir()).spawn().unwrap().wait().unwrap();
+        // deleted some environment stuff ("setup_windows_env") that looked fairly
+        // Python-specific
+        Command::new("cmd.exe")
+            .arg("/C")
+            .arg("vcbuild.bat")
+            .arg(libuv_arch)
+            .arg("release")
+            .current_dir(libuv_dir())
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
     } else {
-        Command::new("sh").arg("autogen.sh").current_dir(libuv_dir())
-            .spawn().unwrap().wait().unwrap();
-        Command::new("./configure").current_dir(libuv_dir())
-            .spawn().unwrap().wait().unwrap();
-        Command::new("make").current_dir(libuv_dir())
-            .spawn().unwrap().wait().unwrap();
+        Command::new("sh")
+            .arg("autogen.sh")
+            .current_dir(libuv_dir())
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+        Command::new("./configure")
+            .current_dir(libuv_dir())
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+        Command::new("make")
+            .current_dir(libuv_dir())
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
     }
 }
 
@@ -65,14 +107,31 @@ fn get_libuv() {
     } else {
         if libuv_clean_compile() {
             if cfg!(windows) {
-                Command::new("cmd.exe").arg("/C").arg("vcbuild.bat").arg("clean")
-                    .current_dir(libuv_dir()).spawn().unwrap().wait().unwrap();
+                Command::new("cmd.exe")
+                    .arg("/C")
+                    .arg("vcbuild.bat")
+                    .arg("clean")
+                    .current_dir(libuv_dir())
+                    .spawn()
+                    .unwrap()
+                    .wait()
+                    .unwrap();
                 fs::remove_dir_all(libuv_dir().join("Release")).unwrap();
             } else {
-                Command::new("make").arg("clean").current_dir(libuv_dir())
-                    .spawn().unwrap().wait().unwrap();
-                Command::new("make").arg("distclean").current_dir(libuv_dir())
-                    .spawn().unwrap().wait().unwrap();
+                Command::new("make")
+                    .arg("clean")
+                    .current_dir(libuv_dir())
+                    .spawn()
+                    .unwrap()
+                    .wait()
+                    .unwrap();
+                Command::new("make")
+                    .arg("distclean")
+                    .current_dir(libuv_dir())
+                    .spawn()
+                    .unwrap()
+                    .wait()
+                    .unwrap();
             }
         }
 
@@ -97,7 +156,7 @@ fn main() {
         get_libuv();
         println!("cargo:rustc-link-lib=static=uv");
         println!("cargo:rustc-link-search=native={}",
-            env::current_dir().unwrap().join(libuv_lib().parent().unwrap()).to_str().unwrap());
+                 env::current_dir().unwrap().join(libuv_lib().parent().unwrap()).to_str().unwrap());
         if target.contains("linux") {
             println!("cargo:rustc-link-lib=rt");
         } else if target.contains("windows") {

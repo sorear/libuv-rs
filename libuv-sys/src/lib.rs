@@ -1,7 +1,8 @@
 #![allow(non_camel_case_types)]
 #![allow(raw_pointer_derive)]
 extern crate libc;
-use libc::{c_int,c_char,c_uint,c_void,uint64_t,size_t,sockaddr,sockaddr_in6,int64_t,ssize_t,addrinfo,c_long,sockaddr_in,sockaddr_storage};
+use libc::{c_int, c_char, c_uint, c_void, uint64_t, size_t, sockaddr, sockaddr_in6, int64_t,
+           ssize_t, addrinfo, c_long, sockaddr_in, sockaddr_storage};
 #[cfg(windows)]
 extern crate winapi;
 #[cfg(windows)]
@@ -10,7 +11,7 @@ use winapi::{OVERLAPPED, HANDLE};
 #[cfg(windows)]
 mod variable_types {
     use libc::c_uchar;
-    use winapi::{ULONG,SOCKET,HANDLE};
+    use winapi::{ULONG, SOCKET, HANDLE};
     // undocumented
     pub type uv_uid_t = c_uchar;
     pub type uv_gid_t = c_uchar;
@@ -84,7 +85,8 @@ pub use uv_handle_type::*;
 
 // errors.rst
 
-// Not binding the individual UV_E* constants for now because they're a huge mess.  Use uv_err_name.
+// Not binding the individual UV_E* constants for now because they're a huge
+// mess.  Use uv_err_name.
 
 extern {
     pub fn uv_strerror(err: c_int) -> *const c_char;
@@ -144,7 +146,8 @@ extern {
 
 // handle.rst
 
-// the purpose of this is not to access the internal fields, but to reproduce the size and alignment so that public fields in derived structs are visible
+// the purpose of this is not to access the internal fields, but to reproduce
+// the size and alignment so that public fields in derived structs are visible
 macro_rules! handle_struct {
     ( $name:ident ) => {
         #[repr(C)]
@@ -212,8 +215,7 @@ pub enum uv_req_type {
     UV_FS = 6,
     UV_WORK = 7,
     UV_GETADDRINFO = 8,
-    UV_GETNAMEINFO = 9,
-    // plus zero or more private types
+    UV_GETNAMEINFO = 9, // plus zero or more private types
 }
 pub use uv_req_type::*;
 
@@ -229,8 +231,11 @@ pub type uv_timer_cb = extern "C" fn(*mut uv_timer_t);
 
 extern {
     pub fn uv_timer_init(loop_: *mut uv_loop_t, handle: *mut uv_timer_t) -> c_int;
-    pub fn uv_timer_start(handle: *mut uv_timer_t, cb: uv_timer_cb,
-        timeout: uint64_t, repeat: uint64_t) -> c_int;
+    pub fn uv_timer_start(handle: *mut uv_timer_t,
+                          cb: uv_timer_cb,
+                          timeout: uint64_t,
+                          repeat: uint64_t)
+                          -> c_int;
     pub fn uv_timer_stop(handle: *mut uv_timer_t) -> c_int;
     pub fn uv_timer_again(handle: *mut uv_timer_t) -> c_int;
     pub fn uv_timer_set_repeat(handle: *mut uv_timer_t, repeat: uint64_t);
@@ -276,7 +281,10 @@ handle_struct!(uv_async_t);
 pub type uv_async_cb = extern "C" fn(*mut uv_async_t);
 
 extern {
-    pub fn uv_async_init(loop_: *mut uv_loop_t, async: *mut uv_async_t, async_cb: uv_async_cb) -> c_int;
+    pub fn uv_async_init(loop_: *mut uv_loop_t,
+                         async: *mut uv_async_t,
+                         async_cb: uv_async_cb)
+                         -> c_int;
     pub fn uv_async_send(async: *mut uv_async_t) -> c_int;
 }
 
@@ -294,7 +302,10 @@ pub use uv_poll_event::*;
 
 extern {
     pub fn uv_poll_init(loop_: *mut uv_loop_t, handle: *mut uv_poll_t, fd: c_int) -> c_int;
-    pub fn uv_poll_init_socket(loop_: *mut uv_loop_t, handle: *mut uv_poll_t, socket: uv_os_sock_t) -> c_int;
+    pub fn uv_poll_init_socket(loop_: *mut uv_loop_t,
+                               handle: *mut uv_poll_t,
+                               socket: uv_os_sock_t)
+                               -> c_int;
     pub fn uv_poll_start(handle: *mut uv_poll_t, events: c_int, cb: uv_poll_cb) -> c_int;
     pub fn uv_poll_stop(poll: *mut uv_poll_t) -> c_int;
 }
@@ -378,7 +389,10 @@ pub enum uv_stdio_flags {
 
 extern {
     pub fn uv_disable_stdio_inheritance();
-    pub fn uv_spawn(loop_: *mut uv_loop_t, handle: *mut uv_process_t, options: *const uv_process_options_t) -> c_int;
+    pub fn uv_spawn(loop_: *mut uv_loop_t,
+                    handle: *mut uv_process_t,
+                    options: *const uv_process_options_t)
+                    -> c_int;
     pub fn uv_process_kill(handle: *mut uv_process_t, signum: c_int) -> c_int;
     pub fn uv_kill(pid: c_int, signum: c_int) -> c_int;
 }
@@ -414,7 +428,8 @@ struct uv__io_t {
     _rwcount: [c_int; 2],
 }
 
-// this only works because it begins and ends with a pointer, so there will be no extra padding from the nested struct
+// this only works because it begins and ends with a pointer, so there will be
+// no extra padding from the nested struct
 #[repr(C)]
 struct _stream_private {
     _alloc_cb: uv_alloc_cb,
@@ -500,13 +515,30 @@ pub type uv_shutdown_cb = extern "C" fn(*mut uv_shutdown_t, c_int);
 pub type uv_connection_cb = extern "C" fn(*mut uv_stream_t, c_int);
 
 extern {
-    pub fn uv_shutdown(req: *mut uv_shutdown_t, handle: *mut uv_stream_t, cb: uv_shutdown_cb) -> c_int;
+    pub fn uv_shutdown(req: *mut uv_shutdown_t,
+                       handle: *mut uv_stream_t,
+                       cb: uv_shutdown_cb)
+                       -> c_int;
     pub fn uv_listen(stream: *mut uv_stream_t, backlog: c_int, cb: uv_connection_cb) -> c_int;
     pub fn uv_accept(server: *mut uv_stream_t, client: *mut uv_stream_t) -> c_int;
-    pub fn uv_read_start(stream: *mut uv_stream_t, alloc_cb: uv_alloc_cb, read_cb: uv_read_cb) -> c_int;
+    pub fn uv_read_start(stream: *mut uv_stream_t,
+                         alloc_cb: uv_alloc_cb,
+                         read_cb: uv_read_cb)
+                         -> c_int;
     pub fn uv_read_stop(stream: *mut uv_stream_t) -> c_int;
-    pub fn uv_write(req: *mut uv_write_t, handle: *mut uv_stream_t, bufs: *const uv_buf_t, nbufs: c_uint, cb: uv_write_cb) -> c_int;
-    pub fn uv_write2(req: *mut uv_write_t, handle: *mut uv_stream_t, bufs: *const uv_buf_t, nbufs: c_uint, send_handle: *mut uv_stream_t, cb: uv_write_cb) -> c_int;
+    pub fn uv_write(req: *mut uv_write_t,
+                    handle: *mut uv_stream_t,
+                    bufs: *const uv_buf_t,
+                    nbufs: c_uint,
+                    cb: uv_write_cb)
+                    -> c_int;
+    pub fn uv_write2(req: *mut uv_write_t,
+                     handle: *mut uv_stream_t,
+                     bufs: *const uv_buf_t,
+                     nbufs: c_uint,
+                     send_handle: *mut uv_stream_t,
+                     cb: uv_write_cb)
+                     -> c_int;
     pub fn uv_try_write(handle: *mut uv_stream_t, bufs: *const uv_buf_t, nbufs: c_uint) -> c_int;
     pub fn uv_is_readable(handle: *const uv_stream_t) -> c_int;
     pub fn uv_is_writable(handle: *const uv_stream_t) -> c_int;
@@ -536,9 +568,19 @@ extern {
     pub fn uv_tcp_keepalive(handle: *mut uv_tcp_t, enable: c_int, delay: c_uint) -> c_int;
     pub fn uv_tcp_simultaneous_accepts(handle: *mut uv_tcp_t, enable: c_int) -> c_int;
     pub fn uv_tcp_bind(handle: *mut uv_tcp_t, addr: *const sockaddr, flags: c_uint) -> c_int;
-    pub fn uv_tcp_getsockname(handle: *const uv_tcp_t, name: *mut sockaddr, namelen: *mut c_int) -> c_int;
-    pub fn uv_tcp_getpeername(handle: *const uv_tcp_t, name: *mut sockaddr, namelen: *mut c_int) -> c_int;
-    pub fn uv_tcp_connect(req: *mut uv_connect_t, handle: *mut uv_tcp_t, addr: *const sockaddr, cb: uv_connect_cb) -> c_int;
+    pub fn uv_tcp_getsockname(handle: *const uv_tcp_t,
+                              name: *mut sockaddr,
+                              namelen: *mut c_int)
+                              -> c_int;
+    pub fn uv_tcp_getpeername(handle: *const uv_tcp_t,
+                              name: *mut sockaddr,
+                              namelen: *mut c_int)
+                              -> c_int;
+    pub fn uv_tcp_connect(req: *mut uv_connect_t,
+                          handle: *mut uv_tcp_t,
+                          addr: *const sockaddr,
+                          cb: uv_connect_cb)
+                          -> c_int;
 }
 
 // pipe.rst
@@ -549,12 +591,21 @@ extern {
     pub fn uv_pipe_init(loop_: *mut uv_loop_t, handle: *mut uv_pipe_t, ipc: c_int) -> c_int;
     pub fn uv_pipe_open(handle: *mut uv_pipe_t, file: uv_file) -> c_int;
     pub fn uv_pipe_bind(handle: *mut uv_pipe_t, name: *const c_char) -> c_int;
-    pub fn uv_pipe_connect(req: *mut uv_connect_t, handle: *mut uv_pipe_t, name: *const c_char, cb: uv_connect_cb);
-    pub fn uv_pipe_getsockname(handle: *const uv_pipe_t, buffer: *mut c_char, size: *mut size_t) -> c_int;
-    pub fn uv_pipe_getpeername(handle: *const uv_pipe_t, buffer: *mut c_char, size: *mut size_t) -> c_int;
+    pub fn uv_pipe_connect(req: *mut uv_connect_t,
+                           handle: *mut uv_pipe_t,
+                           name: *const c_char,
+                           cb: uv_connect_cb);
+    pub fn uv_pipe_getsockname(handle: *const uv_pipe_t,
+                               buffer: *mut c_char,
+                               size: *mut size_t)
+                               -> c_int;
+    pub fn uv_pipe_getpeername(handle: *const uv_pipe_t,
+                               buffer: *mut c_char,
+                               size: *mut size_t)
+                               -> c_int;
     pub fn uv_pipe_pending_instances(handle: *mut uv_pipe_t, count: c_int);
     pub fn uv_pipe_pending_count(handle: *mut uv_pipe_t) -> c_int;
-    pub fn uv_pipe_pending_type(handle:  *mut uv_pipe_t) -> uv_handle_type;
+    pub fn uv_pipe_pending_type(handle: *mut uv_pipe_t) -> uv_handle_type;
 }
 
 // tty.rst
@@ -570,10 +621,17 @@ pub enum uv_tty_mode_t {
 pub use uv_tty_mode_t::*;
 
 extern {
-    pub fn uv_tty_init(loop_: *mut uv_loop_t, handle: *mut uv_tty_t, fd: uv_file, readable: c_int) -> c_int;
+    pub fn uv_tty_init(loop_: *mut uv_loop_t,
+                       handle: *mut uv_tty_t,
+                       fd: uv_file,
+                       readable: c_int)
+                       -> c_int;
     pub fn uv_tty_set_mode(handle: *mut uv_tty_t, mode: uv_tty_mode_t) -> c_int;
     pub fn uv_tty_reset_mode() -> c_int;
-    pub fn uv_tty_get_winsize(handle: *mut uv_tty_t, width: *mut c_int, height: *mut c_int) -> c_int;
+    pub fn uv_tty_get_winsize(handle: *mut uv_tty_t,
+                              width: *mut c_int,
+                              height: *mut c_int)
+                              -> c_int;
 }
 
 // udp.rst
@@ -619,16 +677,38 @@ extern {
     pub fn uv_udp_init_ex(loop_: *mut uv_loop_t, handle: *mut uv_udp_t, flags: c_uint) -> c_int;
     pub fn uv_udp_open(handle: *mut uv_udp_t, sock: uv_os_sock_t) -> c_int;
     pub fn uv_udp_bind(handle: *mut uv_udp_t, addr: *const sockaddr, flags: c_uint) -> c_int;
-    pub fn uv_udp_getsockname(handle: *const uv_udp_t, name: *mut sockaddr, namelen: *mut c_int) -> c_int;
-    pub fn uv_udp_set_membership(handle: *mut uv_udp_t, multicast_addr: *const c_char, interface_addr: *const c_char, membership: uv_membership) -> c_int;
+    pub fn uv_udp_getsockname(handle: *const uv_udp_t,
+                              name: *mut sockaddr,
+                              namelen: *mut c_int)
+                              -> c_int;
+    pub fn uv_udp_set_membership(handle: *mut uv_udp_t,
+                                 multicast_addr: *const c_char,
+                                 interface_addr: *const c_char,
+                                 membership: uv_membership)
+                                 -> c_int;
     pub fn uv_udp_set_multicast_loop(handle: *mut uv_udp_t, on: c_int) -> c_int;
     pub fn uv_udp_set_multicast_ttl(handle: *mut uv_udp_t, ttl: c_int) -> c_int;
-    pub fn uv_udp_set_multicast_interface(handle: *mut uv_udp_t, interface_addr: *const c_char) -> c_int;
+    pub fn uv_udp_set_multicast_interface(handle: *mut uv_udp_t,
+                                          interface_addr: *const c_char)
+                                          -> c_int;
     pub fn uv_udp_set_broadcast(handle: *mut uv_udp_t, on: c_int) -> c_int;
     pub fn uv_udp_set_ttl(handle: *mut uv_udp_t, ttl: c_int) -> c_int;
-    pub fn uv_udp_send(req: *mut uv_udp_send_t, handle: *mut uv_udp_t, bufs: *const uv_buf_t, nbufs: c_uint, addr: *const sockaddr, send_cb: uv_udp_send_cb) -> c_int;
-    pub fn uv_udp_try_send(handle: *mut uv_udp_t, bufs: *const uv_buf_t, nbufs: c_uint, addr: *const sockaddr) -> c_int;
-    pub fn uv_udp_recv_start(handle: *mut uv_udp_t, alloc_cb: uv_alloc_cb, recv_cb: uv_udp_recv_cb) -> c_int;
+    pub fn uv_udp_send(req: *mut uv_udp_send_t,
+                       handle: *mut uv_udp_t,
+                       bufs: *const uv_buf_t,
+                       nbufs: c_uint,
+                       addr: *const sockaddr,
+                       send_cb: uv_udp_send_cb)
+                       -> c_int;
+    pub fn uv_udp_try_send(handle: *mut uv_udp_t,
+                           bufs: *const uv_buf_t,
+                           nbufs: c_uint,
+                           addr: *const sockaddr)
+                           -> c_int;
+    pub fn uv_udp_recv_start(handle: *mut uv_udp_t,
+                             alloc_cb: uv_alloc_cb,
+                             recv_cb: uv_udp_recv_cb)
+                             -> c_int;
     pub fn uv_udp_recv_stop(handle: *mut uv_udp_t) -> c_int;
 }
 
@@ -654,9 +734,16 @@ pub use uv_fs_event_flags::*;
 
 extern {
     pub fn uv_fs_event_init(loop_: *mut uv_loop_t, handle: *mut uv_fs_event_t) -> c_int;
-    pub fn uv_fs_event_start(handle: *mut uv_fs_event_t, cb: uv_fs_event_cb, path: *const c_char, flags: c_uint) -> c_int;
+    pub fn uv_fs_event_start(handle: *mut uv_fs_event_t,
+                             cb: uv_fs_event_cb,
+                             path: *const c_char,
+                             flags: c_uint)
+                             -> c_int;
     pub fn uv_fs_event_stop(handle: *mut uv_fs_event_t) -> c_int;
-    pub fn uv_fs_event_getpath(handle: *mut uv_fs_event_t, buffer: *mut c_char, size: *mut size_t) -> c_int;
+    pub fn uv_fs_event_getpath(handle: *mut uv_fs_event_t,
+                               buffer: *mut c_char,
+                               size: *mut size_t)
+                               -> c_int;
 }
 
 // fs_poll.rst
@@ -666,9 +753,16 @@ pub type uv_fs_poll_cb = extern "C" fn(*mut uv_fs_poll_t, c_int, *const uv_stat_
 
 extern {
     pub fn uv_fs_poll_init(loop_: *mut uv_loop_t, handle: *mut uv_fs_poll_t) -> c_int;
-    pub fn uv_fs_poll_start(handle: *mut uv_fs_poll_t, poll_cb: uv_fs_poll_cb, path: *const c_char, interval: c_uint) -> c_int;
+    pub fn uv_fs_poll_start(handle: *mut uv_fs_poll_t,
+                            poll_cb: uv_fs_poll_cb,
+                            path: *const c_char,
+                            interval: c_uint)
+                            -> c_int;
     pub fn uv_fs_poll_stop(handle: *mut uv_fs_poll_t) -> c_int;
-    pub fn uv_fs_poll_getpath(handle: *mut uv_fs_poll_t, buffer: *mut c_char, size: *mut size_t) -> c_int;
+    pub fn uv_fs_poll_getpath(handle: *mut uv_fs_poll_t,
+                              buffer: *mut c_char,
+                              size: *mut size_t)
+                              -> c_int;
 }
 
 // fs.rst
@@ -771,41 +865,178 @@ pub struct uv_dirent_t {
     pub type_: uv_dirent_type_t,
 }
 
-pub const UV_FS_SYMLINK_DIR : c_int = 0x0001;
-pub const UV_FS_SYMLINK_JUNCTION : c_int = 0x0002;
+pub const UV_FS_SYMLINK_DIR: c_int = 0x0001;
+pub const UV_FS_SYMLINK_JUNCTION: c_int = 0x0002;
 
 pub type uv_fs_cb = Option<extern "C" fn(*mut uv_fs_t)>;
 
 extern {
     pub fn uv_fs_req_cleanup(req: *mut uv_fs_t);
-    pub fn uv_fs_close(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_open(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, flags: c_int, mode: c_int, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_read(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, bufs: *const uv_buf_t, nbufs: c_uint, offset: int64_t, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_unlink(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_write(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, bufs: *const uv_buf_t, nbufs: c_uint, offset: int64_t, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_mkdir(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, mode: c_int, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_mkdtemp(loop_: *mut uv_loop_t, req: *mut uv_fs_t, tpl: *const c_char, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_rmdir(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_scandir(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, flags: c_int, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_close(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       file: uv_file,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_open(loop_: *mut uv_loop_t,
+                      req: *mut uv_fs_t,
+                      path: *const c_char,
+                      flags: c_int,
+                      mode: c_int,
+                      cb: uv_fs_cb)
+                      -> c_int;
+    pub fn uv_fs_read(loop_: *mut uv_loop_t,
+                      req: *mut uv_fs_t,
+                      file: uv_file,
+                      bufs: *const uv_buf_t,
+                      nbufs: c_uint,
+                      offset: int64_t,
+                      cb: uv_fs_cb)
+                      -> c_int;
+    pub fn uv_fs_unlink(loop_: *mut uv_loop_t,
+                        req: *mut uv_fs_t,
+                        path: *const c_char,
+                        cb: uv_fs_cb)
+                        -> c_int;
+    pub fn uv_fs_write(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       file: uv_file,
+                       bufs: *const uv_buf_t,
+                       nbufs: c_uint,
+                       offset: int64_t,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_mkdir(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       path: *const c_char,
+                       mode: c_int,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_mkdtemp(loop_: *mut uv_loop_t,
+                         req: *mut uv_fs_t,
+                         tpl: *const c_char,
+                         cb: uv_fs_cb)
+                         -> c_int;
+    pub fn uv_fs_rmdir(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       path: *const c_char,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_scandir(loop_: *mut uv_loop_t,
+                         req: *mut uv_fs_t,
+                         path: *const c_char,
+                         flags: c_int,
+                         cb: uv_fs_cb)
+                         -> c_int;
     pub fn uv_fs_scandir_next(req: *mut uv_fs_t, ent: *mut uv_dirent_t) -> c_int;
-    pub fn uv_fs_stat(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_fstat(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_lstat(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_rename(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, new_path: *const c_char, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_fsync(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_fdatasync(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_ftruncate(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, offset: int64_t, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_sendfile(loop_: *mut uv_loop_t, req: *mut uv_fs_t, out_fd: uv_file, in_fd: uv_file, in_offset: int64_t, length: size_t, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_access(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, mode: c_int, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_chmod(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, mode: c_int, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_fchmod(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, mode: c_int, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_utime(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, atime: f64, mtime: f64, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_futime(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, atime: f64, mtime: f64, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_link(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, new_path: *const c_char, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_symlink(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, new_path: *const c_char, flags: c_int, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_readlink(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_chown(loop_: *mut uv_loop_t, req: *mut uv_fs_t, path: *const c_char, uid: uv_uid_t, gid: uv_gid_t, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_fchown(loop_: *mut uv_loop_t, req: *mut uv_fs_t, file: uv_file, uid: uv_uid_t, gid: uv_gid_t, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_stat(loop_: *mut uv_loop_t,
+                      req: *mut uv_fs_t,
+                      path: *const c_char,
+                      cb: uv_fs_cb)
+                      -> c_int;
+    pub fn uv_fs_fstat(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       file: uv_file,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_lstat(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       path: *const c_char,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_rename(loop_: *mut uv_loop_t,
+                        req: *mut uv_fs_t,
+                        path: *const c_char,
+                        new_path: *const c_char,
+                        cb: uv_fs_cb)
+                        -> c_int;
+    pub fn uv_fs_fsync(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       file: uv_file,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_fdatasync(loop_: *mut uv_loop_t,
+                           req: *mut uv_fs_t,
+                           file: uv_file,
+                           cb: uv_fs_cb)
+                           -> c_int;
+    pub fn uv_fs_ftruncate(loop_: *mut uv_loop_t,
+                           req: *mut uv_fs_t,
+                           file: uv_file,
+                           offset: int64_t,
+                           cb: uv_fs_cb)
+                           -> c_int;
+    pub fn uv_fs_sendfile(loop_: *mut uv_loop_t,
+                          req: *mut uv_fs_t,
+                          out_fd: uv_file,
+                          in_fd: uv_file,
+                          in_offset: int64_t,
+                          length: size_t,
+                          cb: uv_fs_cb)
+                          -> c_int;
+    pub fn uv_fs_access(loop_: *mut uv_loop_t,
+                        req: *mut uv_fs_t,
+                        path: *const c_char,
+                        mode: c_int,
+                        cb: uv_fs_cb)
+                        -> c_int;
+    pub fn uv_fs_chmod(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       path: *const c_char,
+                       mode: c_int,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_fchmod(loop_: *mut uv_loop_t,
+                        req: *mut uv_fs_t,
+                        file: uv_file,
+                        mode: c_int,
+                        cb: uv_fs_cb)
+                        -> c_int;
+    pub fn uv_fs_utime(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       path: *const c_char,
+                       atime: f64,
+                       mtime: f64,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_futime(loop_: *mut uv_loop_t,
+                        req: *mut uv_fs_t,
+                        file: uv_file,
+                        atime: f64,
+                        mtime: f64,
+                        cb: uv_fs_cb)
+                        -> c_int;
+    pub fn uv_fs_link(loop_: *mut uv_loop_t,
+                      req: *mut uv_fs_t,
+                      path: *const c_char,
+                      new_path: *const c_char,
+                      cb: uv_fs_cb)
+                      -> c_int;
+    pub fn uv_fs_symlink(loop_: *mut uv_loop_t,
+                         req: *mut uv_fs_t,
+                         path: *const c_char,
+                         new_path: *const c_char,
+                         flags: c_int,
+                         cb: uv_fs_cb)
+                         -> c_int;
+    pub fn uv_fs_readlink(loop_: *mut uv_loop_t,
+                          req: *mut uv_fs_t,
+                          path: *const c_char,
+                          cb: uv_fs_cb)
+                          -> c_int;
+    pub fn uv_fs_chown(loop_: *mut uv_loop_t,
+                       req: *mut uv_fs_t,
+                       path: *const c_char,
+                       uid: uv_uid_t,
+                       gid: uv_gid_t,
+                       cb: uv_fs_cb)
+                       -> c_int;
+    pub fn uv_fs_fchown(loop_: *mut uv_loop_t,
+                        req: *mut uv_fs_t,
+                        file: uv_file,
+                        uid: uv_uid_t,
+                        gid: uv_gid_t,
+                        cb: uv_fs_cb)
+                        -> c_int;
 }
 
 // threadpool.rst
@@ -823,7 +1054,11 @@ pub type uv_work_cb = extern "C" fn(*mut uv_work_t);
 pub type uv_after_work_cb = extern "C" fn(*mut uv_work_t, c_int);
 
 extern {
-    pub fn uv_queue_work(loop_: *mut uv_loop_t, req: *mut uv_work_t, work_cb: uv_work_cb, after_work_cb: uv_after_work_cb) -> c_int;
+    pub fn uv_queue_work(loop_: *mut uv_loop_t,
+                         req: *mut uv_work_t,
+                         work_cb: uv_work_cb,
+                         after_work_cb: uv_after_work_cb)
+                         -> c_int;
 }
 
 // dns.rst
@@ -883,9 +1118,20 @@ pub struct uv_getnameinfo_t {
 pub type uv_getnameinfo_cb = Option<extern "C" fn(*mut uv_getnameinfo_t, c_int, *const c_char, *const c_char)>;
 
 extern {
-    pub fn uv_getaddrinfo(loop_: *mut uv_loop_t, req: *mut uv_getaddrinfo_t, getaddrinfo_cb: uv_getaddrinfo_cb, node: *const c_char, service: *const c_char, hints: *const addrinfo) -> c_int;
+    pub fn uv_getaddrinfo(loop_: *mut uv_loop_t,
+                          req: *mut uv_getaddrinfo_t,
+                          getaddrinfo_cb: uv_getaddrinfo_cb,
+                          node: *const c_char,
+                          service: *const c_char,
+                          hints: *const addrinfo)
+                          -> c_int;
     pub fn uv_freeaddrint(ai: *mut addrinfo);
-    pub fn uv_getnameinfo(loop_: *mut uv_loop_t, req: *mut uv_getnameinfo_t, getnameinfo_cb: uv_getnameinfo_cb, addr: *const sockaddr, flags: c_int) -> c_int;
+    pub fn uv_getnameinfo(loop_: *mut uv_loop_t,
+                          req: *mut uv_getnameinfo_t,
+                          getnameinfo_cb: uv_getnameinfo_cb,
+                          addr: *const sockaddr,
+                          flags: c_int)
+                          -> c_int;
 }
 
 // dll.rst
@@ -905,7 +1151,8 @@ extern {
 
 // threading.rst
 
-// Not bound because the types differ widely between platforms and it's thoroughly redundant with native Rust threading
+// Not bound because the types differ widely between platforms and it's
+// thoroughly redundant with native Rust threading
 
 // misc.rst
 
@@ -967,7 +1214,11 @@ pub struct uv_interface_address_t {
 
 extern {
     pub fn uv_guess_handle(file: uv_file) -> uv_handle_type;
-    pub fn uv_replace_allocator(malloc_func: uv_malloc_func, realloc_func: uv_realloc_func, calloc_func: uv_calloc_func, free_func: uv_free_func) -> c_int;
+    pub fn uv_replace_allocator(malloc_func: uv_malloc_func,
+                                realloc_func: uv_realloc_func,
+                                calloc_func: uv_calloc_func,
+                                free_func: uv_free_func)
+                                -> c_int;
     pub fn uv_buf_init(base: *mut c_char, len: c_uint) -> uv_buf_t;
     pub fn uv_setup_args(argc: c_int, argv: *mut *mut c_char) -> *mut *mut c_char;
     pub fn uv_get_process_title(buffer: *mut c_char, size: size_t) -> c_int;
@@ -977,7 +1228,9 @@ extern {
     pub fn uv_getrusage(rusage: *mut uv_rusage_t) -> c_int;
     pub fn uv_cpu_info(cpu_infos: *mut *mut uv_cpu_info_t, count: *mut c_int) -> c_int;
     pub fn uv_free_cpu_info(cpu_infos: *mut uv_cpu_info_t, count: c_int);
-    pub fn uv_interface_addresses(addresses: *mut *mut uv_interface_address_t, count: *mut c_int) -> c_int;
+    pub fn uv_interface_addresses(addresses: *mut *mut uv_interface_address_t,
+                                  count: *mut c_int)
+                                  -> c_int;
     pub fn uv_free_interface_addresses(addresses: *mut uv_interface_address_t, count: c_int);
     pub fn uv_loadavg(avg: *mut [f64; 3]);
     pub fn uv_ip4_addr(ip: *const c_char, port: c_int, addr: *mut sockaddr_in) -> c_int;
