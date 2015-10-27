@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(raw_pointer_derive)]
 extern crate libc;
-use libc::{c_int,c_char,c_uint,c_void,uint64_t,size_t,sockaddr,sockaddr_in6,int64_t,ssize_t,addrinfo,c_long,sockaddr_in};
+use libc::{c_int,c_char,c_uint,c_void,uint64_t,size_t,sockaddr,sockaddr_in6,int64_t,ssize_t,addrinfo,c_long,sockaddr_in,sockaddr_storage};
 #[cfg(windows)]
 extern crate winapi;
 #[cfg(windows)]
@@ -145,41 +145,20 @@ extern {
 // handle.rst
 
 // the purpose of this is not to access the internal fields, but to reproduce the size and alignment so that public fields in derived structs are visible
-macro_rules! handle_struct_priv {
-    ( ( $( $pub_:tt )* ) $name:ident, $( $tail:tt )* ) => {
-        #[repr(C)]
-        struct $name {
-            pub data: *mut c_void,
-            pub loop_: *mut uv_loop_t, // readonly
-            pub type_: uv_handle_type, // readonly
-            _close_cb: uv_close_cb,
-            _handle_queue: [*mut c_void; 2],
-            _u_reserved: [*mut c_void; 4],
-            _next_closing: *mut uv_handle_t, // has a different name under WIN32
-            _flags: c_uint,
-            $( $tail )*
-        }
-    }
-}
-
 macro_rules! handle_struct {
-    ( $name:ident, $( $tail:tt )* ) => {
+    ( $name:ident ) => {
         #[repr(C)]
         pub struct $name {
             pub data: *mut c_void,
             pub loop_: *mut uv_loop_t, // readonly
             pub type_: uv_handle_type, // readonly
-            _close_cb: uv_close_cb,
-            _handle_queue: [*mut c_void; 2],
-            _u_reserved: [*mut c_void; 4],
-            _next_closing: *mut uv_handle_t, // has a different name under WIN32
+            _h_private: [*mut c_void; 8],
             _flags: c_uint,
-            $( $tail )*
         }
     }
 }
 
-handle_struct!(uv_handle_t, );
+handle_struct!(uv_handle_t);
 
 pub type uv_alloc_cb = extern "C" fn(*mut uv_handle_t, size_t, *mut uv_buf_t);
 pub type uv_close_cb = extern "C" fn(*mut uv_handle_t);
@@ -199,22 +178,27 @@ extern {
 
 // request.rst
 
+// we can get away with this because it begins and ends with a pointer
+#[repr(C)]
+struct _request_private {
+    _active_queue: [*mut c_void; 2],
+    _reserved: [*mut c_void; 4],
+    #[cfg(windows)]
+    _u_io_overlapped: OVERLAPPED,
+}
+
 macro_rules! request_struct {
-    ($name:ident, $( $tail:tt )* ) => {
+    ($name:ident) => {
         #[repr(C)]
         pub struct $name {
             pub data: *mut c_void,
             pub type_: uv_req_type, // readonly
-            _active_queue: [*mut c_void; 2],
-            _reserved: [*mut c_void; 4],
-            #[cfg(windows)]
-            _u_io_overlapped: OVERLAPPED,
-            // $( $tail )*
+            _r_private: _request_private,
         }
     }
 }
 
-request_struct!(uv_req_t,);
+request_struct!(uv_req_t);
 
 #[repr(C)]
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
@@ -240,7 +224,7 @@ extern {
 
 // timer.rst
 
-handle_struct!(uv_timer_t, );
+handle_struct!(uv_timer_t);
 pub type uv_timer_cb = extern "C" fn(*mut uv_timer_t);
 
 extern {
@@ -255,7 +239,7 @@ extern {
 
 // prepare.rst
 
-handle_struct!(uv_prepare_t, );
+handle_struct!(uv_prepare_t);
 pub type uv_prepare_cb = extern "C" fn(*mut uv_prepare_t);
 
 extern {
@@ -266,7 +250,7 @@ extern {
 
 // check.rst
 
-handle_struct!(uv_check_t, );
+handle_struct!(uv_check_t);
 pub type uv_check_cb = extern "C" fn(*mut uv_check_t);
 
 extern {
@@ -277,7 +261,7 @@ extern {
 
 // idle.rst
 
-handle_struct!(uv_idle_t, );
+handle_struct!(uv_idle_t);
 pub type uv_idle_cb = extern "C" fn(*mut uv_idle_t);
 
 extern {
@@ -288,7 +272,7 @@ extern {
 
 // async.rst
 
-handle_struct!(uv_async_t, );
+handle_struct!(uv_async_t);
 pub type uv_async_cb = extern "C" fn(*mut uv_async_t);
 
 extern {
@@ -298,7 +282,7 @@ extern {
 
 // poll.rst
 
-handle_struct!(uv_poll_t, );
+handle_struct!(uv_poll_t);
 pub type uv_poll_cb = extern "C" fn(*mut uv_poll_t, c_int, c_int);
 
 #[repr(C)]
@@ -317,10 +301,16 @@ extern {
 
 // signal.rst
 
-handle_struct!(uv_signal_t,
+#[repr(C)]
+pub struct uv_signal_t {
+    pub data: *mut c_void,
+    pub loop_: *mut uv_loop_t, // readonly
+    pub type_: uv_handle_type, // readonly
+    _h_private: [*mut c_void; 8],
+    _flags: c_uint,
     _signal_cb: uv_signal_cb,
     pub signum: c_int, // readonly
-);
+}
 pub type uv_signal_cb = extern "C" fn (*mut uv_signal_t, c_int);
 
 extern {
@@ -331,10 +321,16 @@ extern {
 
 // process.rst
 
-handle_struct!(uv_process_t,
+#[repr(C)]
+pub struct uv_process_t {
+    pub data: *mut c_void,
+    pub loop_: *mut uv_loop_t, // readonly
+    pub type_: uv_handle_type, // readonly
+    _h_private: [*mut c_void; 8],
+    _flags: c_uint,
     _exit_cb: uv_exit_cb,
     pub pid: c_int, // readonly
-);
+}
 pub type uv_exit_cb = extern "C" fn (*mut uv_process_t, int64_t, c_int);
 
 #[repr(C)]
@@ -390,10 +386,16 @@ extern {
 // stream.rst
 
 #[cfg(windows)]
-handle_struct_priv!(()uv_read_t,
+#[repr(C)]
+struct uv_read_t {
+    pub data: *mut c_void,
+    pub loop_: *mut uv_loop_t, // readonly
+    pub type_: uv_handle_type, // readonly
+    _h_private: [*mut c_void; 8],
+    _flags: c_uint,
     _event_handle: HANDLE,
     _wait_handle: HANDLE,
-);
+}
 
 #[repr(C)]
 struct uv__work {
@@ -412,63 +414,85 @@ struct uv__io_t {
     _rwcount: [c_int; 2],
 }
 
+// this only works because it begins and ends with a pointer, so there will be no extra padding from the nested struct
+#[repr(C)]
+struct _stream_private {
+    _alloc_cb: uv_alloc_cb,
+    _read_cb: uv_read_cb,
+
+    #[cfg(windows)]
+    _reqs_pending: c_uint,
+    #[cfg(windows)]
+    _activecnt: c_int,
+    #[cfg(windows)]
+    _read_req: uv_read_t,
+    #[cfg(windows)]
+    _u_stream_serv: [*mut c_void; 2],
+
+    #[cfg(not(windows))]
+    _connect_req: *mut c_void,
+    #[cfg(not(windows))]
+    _shutdown_req: *mut c_void,
+    #[cfg(not(windows))]
+    _io_watcher: uv__io_t,
+    #[cfg(not(windows))]
+    _write_queue: [*mut c_void; 2],
+    #[cfg(not(windows))]
+    _write_completed_queue: [*mut c_void; 2],
+    #[cfg(not(windows))]
+    _connection_cb: uv_connection_cb,
+    #[cfg(not(windows))]
+    _delayed_error: c_int,
+    #[cfg(not(windows))]
+    _accepted_fd: c_int,
+    #[cfg(not(windows))]
+    _queued_fds: *mut c_void,
+
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    _select: *mut c_void,
+}
+
 macro_rules! stream_struct {
-    ($name:ident, $( $tail:tt )*) => {
-        handle_struct!($name,
+    ($name:ident) => {
+        #[repr(C)]
+        pub struct $name {
+            pub data: *mut c_void,
+            pub loop_: *mut uv_loop_t, // readonly
+            pub type_: uv_handle_type, // readonly
+            _h_private: [*mut c_void; 8],
+            _flags: c_uint,
             pub write_queue_size: size_t, // readonly
-            _alloc_cb: uv_alloc_cb,
-            _read_cb: uv_read_cb,
-
-            #[cfg(windows)]
-            _reqs_pending: c_uint,
-            #[cfg(windows)]
-            _activecnt: c_int,
-            #[cfg(windows)]
-            _read_req: uv_read_t,
-            #[cfg(windows)]
-            _u_stream_serv: [*mut c_void; 2],
-
-            #[cfg(not(windows))]
-            _connect_req: *mut c_void,
-            #[cfg(not(windows))]
-            _shutdown_req: *mut c_void,
-            #[cfg(not(windows))]
-            _io_watcher: uv__io_t,
-            #[cfg(not(windows))]
-            _write_queue: [*mut c_void; 2],
-            #[cfg(not(windows))]
-            _write_completed_queue: [*mut c_void; 2],
-            #[cfg(not(windows))]
-            _connection_cb: uv_connection_cb,
-            #[cfg(not(windows))]
-            _delayed_error: c_int,
-            #[cfg(not(windows))]
-            _accepted_fd: c_int,
-            #[cfg(not(windows))]
-            _queued_fds: *mut c_void,
-
-            #[cfg(any(target_os = "ios", target_os = "macos"))]
-            _select: *mut c_void,
-
-            $( $tail )*
-        );
+            _s_private: _stream_private,
+        }
     }
 }
 
-stream_struct!(uv_stream_t, );
-request_struct!(uv_connect_t,
+stream_struct!(uv_stream_t);
+#[repr(C)]
+pub struct uv_connect_t {
+    pub data: *mut c_void,
+    pub type_: uv_req_type, // readonly
+    _r_private: _request_private,
     _cb: uv_connect_cb,
     pub handle: *mut uv_stream_t, // readonly
-);
-request_struct!(uv_shutdown_t,
+}
+#[repr(C)]
+pub struct uv_shutdown_t {
+    pub data: *mut c_void,
+    pub type_: uv_req_type, // readonly
+    _r_private: _request_private,
     pub handle: *mut uv_stream_t, // readonly
     _cb: uv_shutdown_cb,
-);
-request_struct!(uv_write_t,
+}
+#[repr(C)]
+pub struct uv_write_t {
+    pub data: *mut c_void,
+    pub type_: uv_req_type, // readonly
+    _r_private: _request_private,
     _cb: uv_write_cb,
     pub send_handle: *mut uv_stream_t,
     pub handle: *mut uv_stream_t,
-);
+}
 pub type uv_read_cb = extern "C" fn(*mut uv_stream_t, ssize_t, *const uv_buf_t);
 pub type uv_write_cb = extern "C" fn(*mut uv_write_t, c_int);
 pub type uv_connect_cb = extern "C" fn(*mut uv_connect_t, c_int);
@@ -491,10 +515,18 @@ extern {
 
 // tcp.rst
 
-stream_struct!(uv_tcp_t,
+#[repr(C)]
+pub struct uv_tcp_t {
+    pub data: *mut c_void,
+    pub loop_: *mut uv_loop_t, // readonly
+    pub type_: uv_handle_type, // readonly
+    _h_private: [*mut c_void; 8],
+    _flags: c_uint,
+    pub write_queue_size: size_t, // readonly
+    _s_private: _stream_private,
     #[cfg(windows)]
     _tcp_private: [*mut c_void; 6],
-);
+}
 
 extern {
     pub fn uv_tcp_init(loop_: *mut uv_loop_t, handle: *mut uv_tcp_t) -> c_int;
@@ -511,7 +543,7 @@ extern {
 
 // pipe.rst
 
-stream_struct!(uv_pipe_t,);
+stream_struct!(uv_pipe_t);
 
 extern {
     pub fn uv_pipe_init(loop_: *mut uv_loop_t, handle: *mut uv_pipe_t, ipc: c_int) -> c_int;
@@ -527,7 +559,7 @@ extern {
 
 // tty.rst
 
-stream_struct!(uv_tty_t,);
+stream_struct!(uv_tty_t);
 #[repr(C)]
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
 pub enum uv_tty_mode_t {
@@ -546,14 +578,24 @@ extern {
 
 // udp.rst
 
-handle_struct!(uv_udp_t,
+#[repr(C)]
+pub struct uv_udp_t {
+    pub data: *mut c_void,
+    pub loop_: *mut uv_loop_t, // readonly
+    pub type_: uv_handle_type, // readonly
+    _h_private: [*mut c_void; 8],
+    _flags: c_uint,
     pub send_queue_size: size_t, // readonly
     pub send_queue_count: size_t, // readonly
-);
-request_struct!(uv_udp_send_t,
+}
+#[repr(C)]
+pub struct uv_udp_send_t {
+    pub data: *mut c_void,
+    pub type_: uv_req_type, // readonly
+    _r_private: _request_private,
     pub handle: *mut uv_udp_t, // readonly
     _cb: uv_udp_send_cb,
-);
+}
 #[repr(C)]
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
 pub enum uv_udp_flags {
@@ -592,7 +634,7 @@ extern {
 
 // fs_event.rst
 
-handle_struct!(uv_fs_event_t,);
+handle_struct!(uv_fs_event_t);
 pub type uv_fs_event_cb = extern "C" fn(*mut uv_fs_event_t, *const c_char, c_int, c_int);
 #[repr(C)]
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
@@ -619,7 +661,7 @@ extern {
 
 // fs_poll.rst
 
-handle_struct!(uv_fs_poll_t,);
+handle_struct!(uv_fs_poll_t);
 pub type uv_fs_poll_cb = extern "C" fn(*mut uv_fs_poll_t, c_int, *const uv_stat_t, *const uv_stat_t);
 
 extern {
@@ -631,7 +673,11 @@ extern {
 
 // fs.rst
 
-request_struct!(uv_fs_t,
+#[repr(C)]
+pub struct uv_fs_t {
+    pub data: *mut c_void,
+    pub type_: uv_req_type, // readonly
+    _r_private: _request_private,
     pub fs_type: uv_fs_type,
     pub loop_: *mut uv_loop_t,
     _cb: uv_fs_cb,
@@ -639,7 +685,7 @@ request_struct!(uv_fs_t,
     pub ptr: *mut c_void,
     pub path: *const c_char,
     pub statbuf: uv_stat_t,
-);
+}
 
 #[repr(C)]
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
@@ -764,11 +810,15 @@ extern {
 
 // threadpool.rst
 
-request_struct!(uv_work_t,
+#[repr(C)]
+pub struct uv_work_t {
+    pub data: *mut c_void,
+    pub type_: uv_req_type, // readonly
+    _r_private: _request_private,
     pub loop_: *mut uv_loop_t,
     _work_cb: uv_work_cb,
     _after_work_cb: uv_after_work_cb,
-);
+}
 pub type uv_work_cb = extern "C" fn(*mut uv_work_t);
 pub type uv_after_work_cb = extern "C" fn(*mut uv_work_t, c_int);
 
@@ -778,7 +828,11 @@ extern {
 
 // dns.rst
 
-request_struct!(uv_getaddrinfo_t,
+#[repr(C)]
+pub struct uv_getaddrinfo_t {
+    pub data: *mut c_void,
+    pub type_: uv_req_type, // readonly
+    _r_private: _request_private,
     pub loop_: *mut uv_loop_t,
     _work_req: uv__work,
     _cb: uv_getaddrinfo_cb,
@@ -806,9 +860,15 @@ request_struct!(uv_getaddrinfo_t,
     addrinfo: *mut addrinfo,
     #[cfg(windows)]
     _retcode: c_int,
-);
+}
+
 pub type uv_getaddrinfo_cb = Option<extern "C" fn(*mut uv_getaddrinfo_t, c_int, *mut addrinfo)>;
-request_struct!(uv_getnameinfo_t,
+
+#[repr(C)]
+pub struct uv_getnameinfo_t {
+    pub data: *mut c_void,
+    pub type_: uv_req_type, // readonly
+    _r_private: _request_private,
     pub loop_: *mut uv_loop_t,
     _work_req: uv__work,
     _getnameinfo_cb: uv_getnameinfo_cb,
@@ -818,7 +878,8 @@ request_struct!(uv_getnameinfo_t,
     pub host: [c_char; 1025],
     pub service: [c_char; 32],
     _retcode: c_int,
-);
+}
+
 pub type uv_getnameinfo_cb = Option<extern "C" fn(*mut uv_getnameinfo_t, c_int, *const c_char, *const c_char)>;
 
 extern {
@@ -939,13 +1000,13 @@ mod test {
     use super::*;
     use std::mem;
     macro_rules! testfun {
-        ($name:ident : $($code:tt)*) => { #[test] fn $name() { unsafe { $( $code )* } } }
+        ($name:ident : $($code:stmt ; )*) => { #[test] fn $name() { unsafe { $( $code; )* } } }
     }
     testfun! { smoke: assert!(uv_version() >= 0x10705); }
-    testfun! { handle_size: assert_eq!(uv_handle_size(UV_HANDLE), mem::size_of::<uv_handle_t>()); }
-    testfun! { stream_size: assert_eq!(uv_handle_size(UV_STREAM), mem::size_of::<uv_stream_t>()); }
-    testfun! { tcp_size: assert_eq!(uv_handle_size(UV_TCP), mem::size_of::<uv_tcp_t>()); }
-    testfun! { req_size: assert_eq!(uv_req_size(UV_REQ), mem::size_of::<uv_req_t>()); }
-    testfun! { gai_size: assert_eq!(uv_req_size(UV_GETADDRINFO), mem::size_of::<uv_getaddrinfo_t>()); }
-    testfun! { gni_size: assert_eq!(uv_req_size(UV_GETNAMEINFO), mem::size_of::<uv_getnameinfo_t>()); }
+    testfun! { handle_size: assert_eq!(uv_handle_size(UV_HANDLE) as usize, mem::size_of::<uv_handle_t>()); }
+    testfun! { stream_size: assert_eq!(uv_handle_size(UV_STREAM) as usize, mem::size_of::<uv_stream_t>()); }
+    testfun! { tcp_size: assert_eq!(uv_handle_size(UV_TCP) as usize, mem::size_of::<uv_tcp_t>()); }
+    testfun! { req_size: assert_eq!(uv_req_size(UV_REQ) as usize, mem::size_of::<uv_req_t>()); }
+    testfun! { gai_size: assert_eq!(uv_req_size(UV_GETADDRINFO) as usize, mem::size_of::<uv_getaddrinfo_t>()); }
+    testfun! { gni_size: assert_eq!(uv_req_size(UV_GETNAMEINFO) as usize, mem::size_of::<uv_getnameinfo_t>()); }
 }
