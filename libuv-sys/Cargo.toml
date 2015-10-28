@@ -7,6 +7,7 @@ repository = "https://github.com/sorear/libuv-rs"
 description = "Native bindings to the libuv library"
 license = "MIT"
 # todo: readme, documentation, homepage, keywords?
+exclude = ["libuv/*"]
 
 [build-dependencies]
 pkg-config = "0.3.6"
