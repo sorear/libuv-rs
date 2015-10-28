@@ -3,6 +3,10 @@ name = "libuv-sys"
 version = "0.1.0"
 authors = ["Stefan O'Rear <stefanor@cox.net>"]
 build = "build.rs"
+repository = "https://github.com/sorear/libuv-rs"
+description = "Native bindings to the libuv library"
+license = "MIT"
+# todo: readme, documentation, homepage, keywords?
 
 [build-dependencies]
 pkg-config = "0.3.6"
