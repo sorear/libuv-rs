@@ -25,6 +25,13 @@ impl Debug for ThreadId {
     }
 }
 
+impl ThreadId {
+    /// Returns true if this `ThreadId` value represents the calling thread.
+    pub fn is_current(&self) -> bool {
+        THREAD_NONCE.with(|r| r == self)
+    }
+}
+
 // consider using https://github.com/rust-lang/rust/pull/29447 after it lands,
 // or a u64 atomic where available
 // is there a lock-free way to increment a 64-bit counter?
@@ -131,7 +138,7 @@ impl Drop for TBList {
 
 impl<T: 'static> Drop for ThreadBound<T> {
     fn drop(&mut self) {
-        if self.list.owner == current_thread_id() && !self.list.destroying.get() {
+        if self.list.owner.is_current() && !self.list.destroying.get() {
             unsafe {
                 // list_dumper("B", &*self.list);
                 destroy_var(&(*self.var).header);
@@ -224,11 +231,11 @@ impl<T: 'static> ThreadBound<T> {
     /// Returns true if this capability can be used without panicking.  This will remain true on
     /// the same thread as long as the thread does not enter the TLS destruction phase.
     pub fn accessible(&self) -> bool {
-        return self.list.owner == current_thread_id() && !self.list.destroying.get();
+        return self.list.owner.is_current() && !self.list.destroying.get();
     }
 
     fn check_access(&self) {
-        if self.list.owner != current_thread_id() {
+        if !self.list.owner.is_current() {
             panic!("Attempt to access ThreadBound from incorrect thread");
         }
 
@@ -297,6 +304,7 @@ mod tests {
         let id2 = current_thread_id();
 
         assert_eq!(id1, id2);
+        assert!(id1.is_current());
     }
 
     #[test]
@@ -311,6 +319,7 @@ mod tests {
         let id2 = thread::spawn(|| current_thread_id()).join().unwrap();
 
         assert!(id1 != id2);
+        assert!(!id2.is_current());
     }
 
     #[test]
