@@ -7,7 +7,6 @@ use std::fmt::{self, Debug};
 use std::ptr;
 use std::mem;
 use std::cell::Cell;
-use std::ops::{Deref,DerefMut};
 
 /// A permanent identifier for a single thread, which will not be reused.
 #[derive(Clone)]
@@ -43,7 +42,12 @@ struct TBListHead {
     destroying: Cell<bool>,
 }
 
-struct TBList {
+/// A container for values which must be accessed within a particular scope in a particular thread.
+/// Values may be added using the `bind_value` method, which returns a capability; the capability
+/// may freely move between threads, but can only be used in the thread of the binding.  A bound
+/// value will be destroyed when the capability is destroyed if that happens in the allowed thread;
+/// otherwise it will be destroyed when the list is.
+pub struct TBList {
     list: Arc<TBListHead>,
 }
 
@@ -96,8 +100,10 @@ unsafe fn unlink_var(header: *const TBHeader) {
 //     let mut p2 = pstart;
 //     println!("list dump {}", why);
 //     loop {
-//         println!("header@{:?}, next={next:?}, prev={prev:?}, free={free:?}", p2,
-//             next = (*p2).next.get(), prev = (*p2).prev.get(), free = (*p2).free);
+// println!("header@{:?}, next={next:?}, prev={prev:?}, free={free:?}",
+// p2,
+// next = (*p2).next.get(), prev = (*p2).prev.get(), free =
+// (*p2).free);
 //         p2 = (*p2).next.get();
 //         if p2 == pstart { break; }
 //     }
@@ -161,7 +167,17 @@ impl TBList {
         TBList { list: lheader }
     }
 
-    fn make_bound<T: 'static>(&self, value: T) -> ThreadBound<T> {
+    /// Creates a new scope for value bindings.  The lifetime of a scope list is forced to be a
+    /// dynamic scope so that it will be properly nested with all `with` and `with_mut` borrows.
+    pub fn scope<F, R>(f: F) -> R
+        where F: FnOnce(&mut Self) -> R
+    {
+        f(&mut Self::new())
+    }
+
+    /// Transfers ownership of a value into a scope, and returns a capability which can be used to
+    /// access that value but only within the same thread and during the same scope.
+    pub fn bind<T: 'static>(&self, value: T) -> ThreadBound<T> {
         unsafe fn free<T: 'static>(header: *const TBHeader) {
             let offset = &(*(0 as *const TBVar<T>)).header as *const TBHeader as usize;
             let varp = ((header as usize) - offset) as *mut TBVar<T>;
@@ -199,15 +215,26 @@ impl TBList {
 thread_local!(static THREAD_LIST_KEY: TBList = TBList::new());
 
 impl<T: 'static> ThreadBound<T> {
-    /// Wraps a value of type `T` in a capability bound to the current thread.
+    /// Wraps a value of type `T` in a capability bound to the current thread.  This uses a
+    /// thread-local instance of `TBList` with the lifetime of the calling thread.
     pub fn new(inner: T) -> Self {
-        THREAD_LIST_KEY.with(|tl| tl.make_bound(inner))
+        THREAD_LIST_KEY.with(|tl| tl.bind(inner))
     }
 
     /// Returns true if this capability can be used without panicking.  This will remain true on
     /// the same thread as long as the thread does not enter the TLS destruction phase.
     pub fn accessible(&self) -> bool {
         return self.list.owner == current_thread_id() && !self.list.destroying.get();
+    }
+
+    fn check_access(&self) {
+        if self.list.owner != current_thread_id() {
+            panic!("Attempt to access ThreadBound from incorrect thread");
+        }
+
+        if self.list.destroying.get() {
+            panic!("Attempt to access ThreadBound during TLS destruction phase");
+        }
     }
 
     /// Consumes this capability to regain ownership of the underlying value.
@@ -221,46 +248,48 @@ impl<T: 'static> ThreadBound<T> {
             unlink_var(&(*self.var).header as *const TBHeader);
             // yes, this is a move, so it invalidates the next/prev
             // println!("from_raw {:?}",self.var);
-            let var_guts : TBVar<T> = *Box::from_raw(self.var);
+            let var_guts: TBVar<T> = *Box::from_raw(self.var);
             mem::forget(self); // no double free
             var_guts.value
         }
     }
 
-    fn check_access(&self) {
-        if self.list.owner != current_thread_id() {
-            panic!("Attempt to access ThreadBound from incorrect thread");
-        }
-
-        if self.list.destroying.get() {
-            panic!("Attempt to access ThreadBound during TLS destruction phase");
-        }
-    }
-}
-
-impl<T: 'static> Deref for ThreadBound<T> {
-    type Target = T;
-    /// Can this be documented?
-    fn deref(&self) -> &T {
+    /// Temporarily acquires shared access to the guarded value.  It would not be safe to return a
+    /// reference as by the standard `Deref` traits, as the lifetime of the capability could be
+    /// much longer than the usable life of the referred value.  By only exposing borrowing and
+    /// scoping as functions, we force the lifetimes of values and capabilities to be properly
+    /// nested with each other in a thread, so a single liveness check at the beginning can
+    /// suffice.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the capability is not accessible.
+    pub fn with<F, R>(&self, fun: F) -> R
+        where F: FnOnce(&T) -> R
+    {
         self.check_access();
-        unsafe { &(*self.var).value }
+        fun(unsafe { &(*self.var).value })
     }
-}
 
-impl<T: 'static> DerefMut for ThreadBound<T> {
-    fn deref_mut(&mut self) -> &mut T {
+    /// Temporarily acquires exclusive access to the guarded value.  See safety notes on `with`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the capability is not accessible.
+    pub fn with_mut<F, R>(&mut self, fun: F) -> R
+        where F: FnOnce(&mut T) -> R
+    {
         self.check_access();
-        unsafe { &mut (*self.var).value }
+        fun(unsafe { &mut (*self.var).value })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::TBList;
     use std::thread;
     use std::mem;
-    use std::sync::{Arc,Mutex};
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn same_thread_id() {
@@ -291,26 +320,17 @@ mod tests {
 
         assert!(cap.accessible());
 
-        {
-            let r1 : &i32 = &*cap;
-            assert_eq!(*r1, 42);
-        }
-
-        {
-            let r2 : &mut i32 = &mut *cap;
-            assert_eq!(*r2, 42);
-        }
-
-        {
-            let r3 : i32 = cap.into_inner();
-            assert_eq!(r3, 42);
-        }
+        cap.with(|r1| assert_eq!(*r1, 42));
+        cap.with_mut(|r2| assert_eq!(*r2, 42));
+        let r3: i32 = cap.into_inner();
+        assert_eq!(r3, 42);
     }
 
     #[test]
     fn wrong_thread_throws() {
         let mut cap = ThreadBound::new(42);
-        let res: Box<&'static str> = thread::spawn(move || *cap = 55).join().err().unwrap().downcast().unwrap();
+        let joinh = thread::spawn(move || cap.with_mut(|r| *r = 55));
+        let res: Box<&'static str> = joinh.join().err().unwrap().downcast().unwrap();
         assert_eq!(*res, "Attempt to access ThreadBound from incorrect thread")
     }
 
@@ -329,21 +349,17 @@ mod tests {
 
     #[test]
     fn inaccessible_after_teardown() {
-        let cap = {
-            let list = TBList::new();
-            list.make_bound(42)
-        };
+        let cap = TBList::scope(|list| list.bind(42));
         assert!(!cap.accessible());
 
-        let error : Box<&'static str> = thread::spawn(|| {
-            let mut cap2 = {
-                let list = TBList::new();
-                list.make_bound(42)
-            };
-            *cap2 = 55;
-        }).join().err().unwrap().downcast().unwrap();
+        let joinh = thread::spawn(|| {
+            let mut cap2 = TBList::scope(|list| list.bind(42));
+            cap2.with_mut(|r| *r = 55);
+        });
+        let error: Box<&'static str> = joinh.join().err().unwrap().downcast().unwrap();
 
-        assert_eq!(*error, "Attempt to access ThreadBound during TLS destruction phase");
+        assert_eq!(*error,
+                   "Attempt to access ThreadBound during TLS destruction phase");
     }
 
     #[test]
@@ -360,11 +376,12 @@ mod tests {
         let was_dropped_2 = was_dropped.clone();
         let early_dropped = Arc::new(Mutex::new(false));
         let early_dropped_2 = early_dropped.clone();
-        thread::spawn(move || {
+        let thr = thread::spawn(move || {
             let cap = ThreadBound::new(Trap(was_dropped_2.clone()));
             thread::spawn(move || mem::drop(cap)).join().unwrap();
             (*early_dropped_2.lock().unwrap()) = *was_dropped_2.lock().unwrap();
-        }).join().unwrap();
+        });
+        thr.join().unwrap();
         assert!(!*early_dropped.lock().unwrap());
         assert!(*was_dropped.lock().unwrap());
     }
