@@ -1,0 +1,7 @@
+[package]
+name = "thread-bound"
+version = "0.1.0"
+authors = ["Stefan O'Rear <stefanor@cox.net>"]
+repository = "https://github.com/sorear/libuv-rs"
+description = "Variables which can only be accessed by one thread"
+license = "MIT"
