@@ -1,0 +1,11 @@
+[package]
+name = "libuv"
+version = "0.1.0"
+authors = ["Stefan O'Rear <stefanor@cox.net>"]
+repository = "https://github.com/sorear/libuv-rs"
+description = "Multiplexed I/O using libuv"
+keywords = ["uv","epoll","iocp","select"]
+license = "MIT"
+
+[dependencies]
+libuv-sys = "0.1.0"
