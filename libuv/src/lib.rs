@@ -14,11 +14,11 @@ mod tests {
     use super::*;
     #[test]
     fn test_version_hex() {
-        assert_eq!(version_hex(), 0x10705);
+        assert_eq!(version_hex(), 0x10901);
     }
 
     #[test]
     fn test_version_string() {
-        assert_eq!(version_string(), "1.7.5");
+        assert_eq!(version_string(), "1.9.1");
     }
 }

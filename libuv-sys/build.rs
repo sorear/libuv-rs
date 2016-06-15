@@ -12,8 +12,8 @@ fn libuv_dir() -> PathBuf {
 fn libuv_repo() -> String {
     "https://github.com/libuv/libuv.git".to_owned()
 }
-fn libuv_revision() -> String {
-    "v1.7.5".to_owned()
+fn libuv_revision() -> String { 
+    "v1.9.1".to_owned()
 }
 fn libuv_lib() -> PathBuf {
     if cfg!(windows) {
