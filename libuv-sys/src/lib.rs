@@ -1,5 +1,4 @@
 #![allow(non_camel_case_types)]
-#![allow(raw_pointer_derive)]
 extern crate libc;
 use libc::{c_int, c_char, c_uint, c_void, uint64_t, size_t, sockaddr, sockaddr_in6, int64_t,
            ssize_t, addrinfo, c_long, sockaddr_in, sockaddr_storage};
@@ -216,6 +215,8 @@ pub enum uv_req_type {
     UV_WORK = 7,
     UV_GETADDRINFO = 8,
     UV_GETNAMEINFO = 9, // plus zero or more private types
+    UV_REQ_TYPE_PRIVATE = 10,
+    UV_REQ_TYPE_MAX = 11,
 }
 pub use uv_req_type::*;
 
@@ -297,6 +298,7 @@ pub type uv_poll_cb = extern "C" fn(*mut uv_poll_t, c_int, c_int);
 pub enum uv_poll_event {
     UV_READABLE = 1,
     UV_WRITABLE = 2,
+    UV_DISCONNECT = 4,
 }
 pub use uv_poll_event::*;
 
@@ -546,6 +548,13 @@ extern {
 }
 
 // tcp.rst
+
+#[repr(C)]
+#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+pub enum uv_tcp_flags {
+    UV_TCP_IPV6ONLY = 1,
+}
+pub use uv_tcp_flags::*;
 
 #[repr(C)]
 pub struct uv_tcp_t {
@@ -841,6 +850,7 @@ pub enum uv_fs_type {
     UV_FS_READLINK = 25,
     UV_FS_CHOWN = 26,
     UV_FS_FCHOWN = 27,
+    UV_FS_REALPATH = 28,
 }
 pub use uv_fs_type::*;
 
@@ -1037,7 +1047,29 @@ extern {
                         gid: uv_gid_t,
                         cb: uv_fs_cb)
                         -> c_int;
+     pub fn uv_fs_realpath(loop_: *mut uv_loop_t,
+                         req: *mut uv_fs_t,
+                         path: *const c_char,
+                         cb: uv_fs_cb)
+                         -> c_int;
 }
+
+// passwd.rst
+
+#[repr(C)]
+pub struct uv_passwd_t {
+  pub username: *mut c_char,
+  pub uid: c_long,
+  pub gid: c_long,
+  pub shell: *mut c_char,
+  pub homedir: *mut c_char,
+}
+
+extern {
+    pub fn uv_os_get_passwd(passwd: *mut uv_passwd_t) -> c_int;
+    pub fn uv_os_free_passwd(passwd: *mut uv_passwd_t);
+}
+
 
 // threadpool.rst
 
@@ -1243,6 +1275,7 @@ extern {
     pub fn uv_cwd(buffer: *mut c_char, size: *mut size_t) -> c_int;
     pub fn uv_chdir(dir: *const c_char) -> c_int;
     pub fn uv_os_homedir(buffer: *mut c_char, size: *mut size_t) -> c_int;
+    pub fn uv_os_tmpdir(buffer: *mut c_char, size: *mut size_t) -> c_int;
     pub fn uv_get_free_memory() -> uint64_t;
     pub fn uv_get_total_memory() -> uint64_t;
     pub fn uv_hrtime() -> uint64_t;
