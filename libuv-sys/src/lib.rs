@@ -9,7 +9,7 @@ use winapi::{OVERLAPPED, HANDLE};
 
 #[cfg(windows)]
 mod variable_types {
-    use libc::c_uchar;
+    use libc::{c_uchar, c_char};
     use winapi::{ULONG, SOCKET, HANDLE};
     // undocumented
     pub type uv_uid_t = c_uchar;
