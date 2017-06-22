@@ -154,7 +154,11 @@ fn main() {
         pkg_config::find_library("libuv").unwrap();
     } else {
         get_libuv();
-        println!("cargo:rustc-link-lib=uv");
+        if target.contains("windows") {
+            println!("cargo:rustc-link-lib=libuv");
+        } else {
+            println!("cargo:rustc-link-lib=static=uv");
+        }
         println!("cargo:rustc-link-search=native={}",
                  env::current_dir().unwrap().join(libuv_lib().parent().unwrap()).to_str().unwrap());
         if target.contains("linux") {
