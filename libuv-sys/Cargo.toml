@@ -14,6 +14,7 @@ pkg-config = "0.3.6"
 
 [dependencies]
 libc = "0.1.10"
+winapi = "0.2.7"
 
 # [lib]
 # crate-type = ["dylib"]
